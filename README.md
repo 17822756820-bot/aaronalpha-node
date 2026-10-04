@@ -7,7 +7,8 @@
 ## 这是什么
 
 - 跑在**你自己** Cloudflare 账号里的 Worker，VLESS + WebSocket + TLS
-- UUID 你自己生成、自己独享，不经过任何第三方中转，不与他人共享
+- UUID 你自己生成、自己独享，不与他人共享；流量经 Cloudflare 网络转发
+
 - 绑定你自己的域名，对外就是你自己的节点
 
 ## 快速部署（5 步）
@@ -27,8 +28,7 @@ vless://你的UUID@你的域名:443?encryption=none&security=tls&sni=你的域�
 ## 验证
 
 - 打开 `https://你的域名/` 应看到伪装页
-- 打开 `https://你的域名/你的UUID` 应跳转到 `/login`
-- 客户端连上后访问 `ip.sb`，对外显示 Cloudflare 美国节点 IP
+- 客户端连上后访问 `ip.sb` 查看实际出口 IP（以实测为准）
 
 ## 风险与免责（必读）
 

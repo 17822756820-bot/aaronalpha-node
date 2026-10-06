@@ -1,1 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI 视频提示词工厂</title>
+<style>
+:root{--bg:#101114;--panel:#1a1c21;--line:#2b2e36;--tx:#ece9e2;--mu:#8b8f98;--ac:#f2b84b}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif;line-height:1.55}
+body{padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))}
+main{max-width:640px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 14px}
+label{display:block;font-size:13px;color:var(--mu);margin:12px 0 6px}
+textarea,input{width:100%;background:var(--panel);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:16px;font-family:inherit}
+textarea{min-height:84px;resize:vertical}
+button{font-family:inherit;font-size:15px;border:0;border-radius:10px;padding:12px 14px;background:var(--line);color:var(--tx);min-height:44px}
+button.go{width:100%;margin-top:14px;background:var(--ac);color:#1a1405;font-weight:700;font-size:17px}
+button:active{opacity:.7}
+.bar{display:flex;gap:8px;margin:16px 0 4px;flex-wrap:wrap}
+.bar button{flex:1}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px}
+.card h2{font-size:18px;margin:0 0 8px;color:var(--ac)}
+.card h3{font-size:13px;color:var(--mu);margin:12px 0 4px;font-weight:600}
+.card p,.card li{font-size:15px;margin:0}
+.card ol{margin:0;padding-left:20px}
+.en{font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-word;background:#121317;border-radius:8px;padding:10px}
+.row{display:flex;gap:8px;margin-top:12px}
+.row button{flex:1;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>AI 视频提示词工厂</h1>
+  <label for="s">基础素材（如：卖键盘）</label>
+  <textarea id="s" placeholder="卖键盘"></textarea>
+  <label for="e">英文名（选填，留空则直接用上面的文字）</label>
+  <input id="e" placeholder="mechanical keyboard">
+  <button class="go" id="go">生成 5 种风格</button>
+  <div class="bar" id="bar" hidden>
+    <button id="all">复制全部 JSON</button>
+    <button id="pr">只复制全部 Prompt</button>
+  </div>
+  <div id="out"></div>
+</main>
+<script>
+var S=[
+{id:"cyberpunk",n:"赛博朋克",
+ hook:"霓虹之夜，{s}重新定义未来。",
+ shots:["雨夜霓虹街头，{s}在暗处亮起冷光","特写：{s}的细节被蓝紫霓虹扫过，全息界面浮现","快切加故障特效，定格标语：{s}，属于下一个时代"],
+ p:"Cyberpunk night city, rain-soaked neon streets, {e} glowing under magenta and cyan lights, holographic UI overlays, volumetric fog, macro close-up with shallow depth of field, fast tracking shot, glitch transitions, anamorphic lens flare, ultra detailed, 4K, 24fps",
+ neg:"daylight, flat lighting, low resolution, watermark, garbled text"},
+{id:"healing_anime",n:"治愈动漫",
+ hook:"慢下来，{s}陪你度过今天。",
+ shots:["清晨窗边，暖光洒在{s}上，窗帘轻轻摆动","少女的手轻触{s}，嘴角露出笑意，樱花飘过窗外","黄昏天空渐变，{s}静静放在桌上，画面柔和淡出"],
+ p:"Soft healing anime style, hand-painted watercolor background, warm golden morning light, {e} on a cozy wooden desk by the window, gentle breeze moving curtains, drifting cherry blossom petals, pastel color palette, slow camera push-in, peaceful mood, high detail, 24fps",
+ neg:"dark, horror, harsh shadows, realistic skin, low quality, watermark"},
+{id:"cinematic",n:"电影级写实",
+ hook:"每一个细节，都值得被认真对待。",
+ shots:["低角度慢推，暗调环境中{s}被侧光勾勒出轮廓","浅景深特写，手指落下，{s}的质感与细节清晰可见","拉远到全景，人物转身离开，{s}留在光里"],
+ p:"Cinematic photorealistic commercial, {e} in a moody dim studio, dramatic side lighting, shallow depth of field, 85mm lens, slow dolly-in, subtle film grain, teal and orange color grade, realistic textures, high dynamic range, 4K, 24fps",
+ neg:"cartoon, oversaturated, overexposed, blurry, watermark, text overlay"},
+{id:"retro_vlog",n:"复古Vlog",
+ hook:"今天的快乐很简单：{s}。",
+ shots:["手持镜头，自拍式开场：“今天给你们看个好东西”","随手拍：桌面一角，{s}被拿起、放下，声音很真实","日期戳闪过，镜头晃动收尾：“下期见”"],
+ p:"Retro 90s camcorder vlog, handheld shaky footage, VHS grain and scanlines, date timestamp overlay, {e} on a messy desk at home, warm tungsten light, casual selfie-style framing, slight lens distortion, nostalgic mood, 4:3 aspect feel, 24fps",
+ neg:"clean studio, perfect stabilization, 4K sharpness, CGI, watermark"},
+{id:"minimal_product",n:"极简产品",
+ hook:"少即是多：{s}。",
+ shots:["纯白背景，{s}居中缓慢旋转","细节特写：边缘、材质、光泽，节奏干净","一行标语淡入，{s}静止收尾"],
+ p:"Minimalist product showcase, {e} centered on seamless white background, soft diffused studio lighting, clean reflections, slow 360-degree turntable rotation, extreme macro detail shots, precise geometry, lots of negative space, high-end commercial look, 4K, 24fps",
+ neg:"clutter, busy background, harsh shadows, people, watermark, text artifacts"}
+];
 
+function fill(t,s,e){return t.split("{s}").join(s).split("{e}").join(e)}
+var data=null;
+
+function build(){
+  var s=document.getElementById("s").value.trim();
+  if(!s){document.getElementById("s").focus();return}
+  var e=document.getElementById("e").value.trim()||s;
+  data={subject:s,subject_en:e,styles:S.map(function(k){
+    return{
+      style_id:k.id,style_name:k.n,
+      copy:fill(k.hook,s,e),
+      storyboard:k.shots.map(function(t,i){return{shot:i+1,seconds:3,description:fill(t,s,e)}}),
+      prompt_en:fill(k.p,s,e),
+      negative_prompt:k.neg
+    }
+  })};
+  render();
+}
+
+function el(tag,cls,txt){var n=document.createElement(tag);if(cls)n.className=cls;if(txt!=null)n.textContent=txt;return n}
+
+function btn(label,text){
+  var b=el("button",null,label);
+  b.onclick=function(){copy(text,b)};
+  return b;
+}
+
+function render(){
+  var out=document.getElementById("out");out.innerHTML="";
+  document.getElementById("bar").hidden=false;
+  data.styles.forEach(function(st){
+    var c=el("section","card");
+    c.appendChild(el("h2",null,st.style_name));
+    c.appendChild(el("h3",null,"文案"));
+    c.appendChild(el("p",null,st.copy));
+    c.appendChild(el("h3",null,"分镜脚本"));
+    var ol=el("ol");
+    st.storyboard.forEach(function(sh){ol.appendChild(el("li",null,sh.description))});
+    c.appendChild(ol);
+    c.appendChild(el("h3",null,"英文 Prompt"));
+    c.appendChild(el("p","en",st.prompt_en));
+    var r=el("div","row");
+    r.appendChild(btn("复制 Prompt",st.prompt_en));
+    r.appendChild(btn("复制本风格 JSON",JSON.stringify(st,null,2)));
+    c.appendChild(r);
+    out.appendChild(c);
+  });
+}
+
+function copy(t,b){
+  var old=b.textContent;
+  function ok(){b.textContent="已复制";setTimeout(function(){b.textContent=old},1200)}
+  function fb(){
+    var a=document.createElement("textarea");
+    a.value=t;a.style.cssText="position:fixed;left:0;top:0;opacity:0";
+    document.body.appendChild(a);a.focus();a.select();a.setSelectionRange(0,t.length);
+    try{document.execCommand("copy");ok()}catch(e){b.textContent="复制失败"}
+    document.body.removeChild(a);
+  }
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(ok,fb)}else{fb()}
+}
+
+document.getElementById("go").onclick=build;
+document.getElementById("all").onclick=function(){if(data)copy(JSON.stringify(data,null,2),this)};
+document.getElementById("pr").onclick=function(){
+  if(data)copy(data.styles.map(function(s){return s.style_name+": "+s.prompt_en}).join("\n\n"),this);
+};
+</script>
+</body>
+</html>
